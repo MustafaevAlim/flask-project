@@ -39,6 +39,8 @@ def user_create():
 
 @app.get("/users/<int:user_id>")
 def get_user_id(user_id):
+    if user_id < 0 or user_id >= len(USERS):
+        return Response(status=HTTPStatus.NOT_FOUND)
     user = USERS[user_id]
     body = {
         "id": user.id,
@@ -65,6 +67,10 @@ def contest_create():
     sport = data["sport"]
     participants = data["participants"]
 
+    for i in participants:
+        user = USERS[i]
+        user.contests.append(id)
+
     contest = models.Contests(id, name, sport, participants)
     CONTESTS.append(contest)
 
@@ -81,6 +87,72 @@ def contest_create():
         response=json.dumps(body),
         status=HTTPStatus.OK,
         mimetype="application/json",
+    )
+
+    return response
+
+
+@app.get("/contest/<int:contest_id>")
+def get_contest_by_id(contest_id):
+    if contest_id < 0 or contest_id >= len(USERS):
+        return Response(status=HTTPStatus.NOT_FOUND)
+    contest = CONTESTS[contest_id]
+    body = {
+        "id": contest_id,
+        "name": contest.name,
+        "sport": contest.sport,
+        "status": contest.status,
+        "participants": contest.participants,
+        "winner": contest.winner,
+    }
+
+    response = Response(
+        response=json.dumps(body),
+        status=HTTPStatus.OK,
+        mimetype="application/json",
+    )
+
+    return response
+
+
+@app.post("/contest/<int:contest_id>/finish")
+def finish_contest(contest_id):
+    contest = CONTESTS[contest_id]
+    data = request.get_json()
+    winner = data["winner"]
+    contest.finish(winner)
+
+    body = {
+        "id": contest_id,
+        "name": contest.name,
+        "sport": contest.sport,
+        "status": contest.status,
+        "participants": contest.participants,
+        "winner": winner,
+    }
+
+    response = Response(
+        response=json.dumps(body),
+        status=HTTPStatus.OK,
+        mimetype="application/json",
+    )
+
+    return response
+
+
+@app.get("/users/<int:user_id>/contests")
+def get_user_contests(user_id):
+    user = USERS[user_id]
+    contest = user.contests
+    data = [CONTESTS[i].get_info() for i in contest]
+    body = {
+        "contest": data,
+    }
+
+    response = Response(
+        response=json.dumps(body),
+        status=HTTPStatus.OK,
+        mimetype="application.json",
     )
 
     return response

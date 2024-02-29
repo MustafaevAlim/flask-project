@@ -1,4 +1,5 @@
 import re
+import json
 
 
 class User:
@@ -18,10 +19,26 @@ class User:
 
 
 class Contests:
-    def __init__(self, id, name, sport, participants, winner=None, status="STARDED"):
+    def __init__(self, id, name, sport, participants, winner=None, status="STARTED"):
         self.id = id
         self.name = name
         self.sport = sport
         self.status = status
         self.participants = participants
         self.winner = winner
+
+    def finish(self, winner):
+        self.winner = winner
+        self.status = "FINISHED"
+
+    def get_info(self):
+        data = {
+            "id": self.id,
+            "name": self.name,
+            "sport": self.sport,
+            "status": self.status,
+            "participants": self.participants,
+            "winner": self.winner,
+        }
+
+        return data
