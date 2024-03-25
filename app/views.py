@@ -18,7 +18,7 @@ def user_create():
     if not models.User.is_valid_email(email):
         return Response(status=HTTPStatus.BAD_REQUEST)
 
-    user = models.User(id, first_name, second_name, email, sport, contests=[])
+    user = models.User(id, first_name, second_name, email, sport)
     USERS.append(user)
 
     body = dict()
@@ -65,21 +65,27 @@ def contest_create():
     id = len(CONTESTS)
     name = data["name"]
     sport = data["sport"]
-    participants = data["participants"]
-
-    for i in participants:
+    id_participants = data["participants"]
+    participants = []
+    for i in id_participants:
         user = USERS[i]
         user.contests.append(id)
+        participants.append(user)
 
     contest = models.Contests(id, name, sport, participants)
     CONTESTS.append(contest)
+    if not contest.valid_participants(participants):
+        return Response(
+            response=f"Участники не могут учавствовать в соревновании по этому виду спорта",
+            status=HTTPStatus.BAD_REQUEST,
+        )
 
     body = {
         "id": id,
         "name": name,
         "sport": sport,
         "status": contest.status,
-        "participants": participants,
+        "participants": id_participants,
         "winner": contest.winner,
     }
 
@@ -156,3 +162,25 @@ def get_user_contests(user_id):
     )
 
     return response
+
+
+@app.get("/users/leaderboard")
+def get_leaderboard():
+    data = request.get_json()
+    if data["type"] == "list":
+        users = [user.get_info() for user in USERS]
+        if data["sort"] == "asc":
+            users = sorted(USERS)
+        elif data["sort"] == "desc":
+            users = sorted(USERS, reverse=True)
+
+        users = {"users": [user.get_info() for user in users]}
+        return Response(
+            response=json.dumps(users),
+            status=HTTPStatus.OK,
+            mimetype="application/json",
+        )
+    elif data["type"] == "graph":
+        pass
+    else:
+        return Response(status=HTTPStatus.NOT_FOUND)
