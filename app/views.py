@@ -1,8 +1,9 @@
 from app import app
 from app import USERS, CONTESTS
 from http import HTTPStatus
-from flask import request, Response
+from flask import request, Response, url_for
 from app import models
+from matplotlib import pyplot as plt
 import json
 
 
@@ -68,9 +69,19 @@ def contest_create():
     id_participants = data["participants"]
     participants = []
     for i in id_participants:
-        user = USERS[i]
-        user.contests.append(id)
-        participants.append(user)
+        try:
+            user = USERS[i]
+            user.contests.append(id)
+            participants.append(user)
+        except IndexError:
+            response = (
+                f"Такого участника нет. Список доступных для этого соревнования: <br>"
+                f"""{'<br>'.join([str(user.id) + ") " + user.first_name + user.second_name for user in USERS])}"""
+            )
+            return Response(
+                response,
+                status=HTTPStatus.BAD_REQUEST,
+            )
 
     contest = models.Contests(id, name, sport, participants)
     CONTESTS.append(contest)
@@ -167,8 +178,8 @@ def get_user_contests(user_id):
 @app.get("/users/leaderboard")
 def get_leaderboard():
     data = request.get_json()
+    users = [user.get_info() for user in USERS]
     if data["type"] == "list":
-        users = [user.get_info() for user in USERS]
         if data["sort"] == "asc":
             users = sorted(USERS)
         elif data["sort"] == "desc":
@@ -181,6 +192,19 @@ def get_leaderboard():
             mimetype="application/json",
         )
     elif data["type"] == "graph":
-        pass
+        fig, ax = plt.subplots()
+        name = [
+            f'{user["first_name"] + user["second_name"] + str(user["id"])}'
+            for user in users
+        ]
+        contests = [len(user["contests"]) for user in users]
+        ax.bar(name, contests)
+        ax.set_ylabel("Кол-во соревнований")
+        plt.savefig("app/static/leaderboard.png")
+        return Response(
+            response=(f'<img src={url_for("static", filename="leaderboard.png")}/>'),
+            status=HTTPStatus.OK,
+            mimetype="text/html",
+        )
     else:
         return Response(status=HTTPStatus.NOT_FOUND)
